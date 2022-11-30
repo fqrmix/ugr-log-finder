@@ -72,8 +72,13 @@ read_hour(){
     read hour 
 }
 
+multi_grep_search(){
+    message_text "Количество параметров для поиска?"
+    read grep_search_count
+}
+
 read_request_parameter(){
-    message_text "Введи строку для поиска"
+    message_text "Введи строку для поиска №" ${@:-}
     read request_parameter
 }
 
@@ -101,8 +106,13 @@ process_menu_item(){
             echo "${fgred}Значение некорректно! Могут быть только две цифры без пробелов или знак *"
         fi
     done
-
-    read_request_parameter;
+    multi_grep_search;
+    grep_parameters=()
+    for (( i=1; i <= $grep_search_count; ++i ))
+    do
+        read_request_parameter "${i}";
+        grep_parameters+=($request_parameter);
+    done
     clear;
 }
 
@@ -127,19 +137,25 @@ while [ $opt != '' ]
             printf "\n${menu}*********************************************${normal}\n"
             printf "${menu}Дата (Год-Месяц-День) | Час\n"
             printf "${fgred}${date} | ${hour}"
-            printf "\n${menu}*********************************************${normal}\n\n"
-
+            printf "\n${menu}*********************************************${normal}\n"
+            grep_string="grep -h -A5 -B5 -T --colour=always \"${grep_parameters[0]}\""
+            if [ $grep_search_count > 1 ]; then
+                for (( i=1; i < $grep_search_count; ++i ))
+                do
+                    grep_string+=" | grep \"${grep_parameters[i]}\""
+                done
+            fi
             printf "\n${menu}*********************************************${normal}\n"
             printf "${menu}Строка для поиска\n"
-            printf "${fgred}${request_parameter}"
-            printf "\n${menu}*********************************************${normal}\n\n"
+            printf "${fgred}${grep_string}"
+            printf "\n${menu}*********************************************${normal}\n"
 
             printf "\n${menu}*********************************************${normal}\n"
             printf "${menu}Компонента\n"
             printf "${ugr_nodes[$((opt-1))]}"
-            printf "\n${menu}*********************************************${normal}\n\n"
+            printf "\n${menu}*********************************************${normal}\n"
 
-            echo "find /media/*/${ugr_nodes[$((opt-1))]}/ -name \"*${date//-/*}*${hour}*.gz\" -exec pigz -dc {} \; | grep -h -A5 -B5 -T --colour=always ${request_parameter}"
+            echo "find /media/*/${ugr_nodes[$((opt-1))]}/ -name \"*${date//-/*}*${hour}*.gz\" -exec pigz -dc {} \; | $grep_string"
             exit;
         ;;
 
